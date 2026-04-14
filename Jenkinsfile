@@ -4,44 +4,43 @@ pipeline {
     stages {
         stage('1. Checkout') {
             steps {
-                echo 'Récupération du code depuis GitHub...'
-                // Vérifie que l'URL et la branche correspondent à ton dépôt
-                git branch: 'main', url: 'https://github.com/Ambre2Loup/mon-spring-petclinic.git'
+                echo 'Récupération du code...'
+                // Comme tu es en "Pipeline script from SCM", cette ligne suffit :
+                checkout scm
             }
         }
 
-        stage('2. Build Java (Maven)') {
+        stage('2. Build & Unit Tests') {
             steps {
-                echo 'Compilation de l\'application avec Maven...'
-                // On utilise le wrapper ./mvnw pour ne pas avoir à installer Maven
+                echo 'Compilation et exécution des tests unitaires...'
                 sh 'chmod +x mvnw'
-                sh './mvnw clean package -DskipTests'
+                // On retire -DskipTests pour que Maven lance les tests JUnit
+                sh './mvnw clean test'
             }
         }
 
-        stage('3. Build Docker Image') {
+        stage('3. Packaging') {
+            steps {
+                echo 'Création du fichier JAR...'
+                // On repackage sans relancer les tests pour gagner du temps
+                sh './mvnw package -DskipTests'
+            }
+        }
+
+        stage('4. Build Docker Image') {
             steps {
                 echo 'Construction de l\'image Docker...'
-                // On utilise le tag 'latest' pour le développement
                 sh 'docker build -t petclinic-app:latest .'
-            }
-        }
-
-        stage('4. Verification') {
-            steps {
-                echo 'Vérification de l\'image créée :'
-                sh 'docker images | grep petclinic-app'
             }
         }
     }
 
     post {
         always {
-            echo 'Nettoyage des images intermédiaires...'
+            // Best Practice : Récupérer les rapports de tests même si ça échoue
+            junit '**/target/surefire-reports/*.xml'
+            echo 'Nettoyage...'
             sh 'docker image prune -f'
-        }
-        success {
-            echo 'Félicitations ! Ton image est prête sur ton Mac.'
         }
     }
 }
