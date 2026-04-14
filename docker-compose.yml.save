@@ -1,0 +1,5 @@
+services:
+  jenkins:
+    # Cette image est maintenue spécifiquement pour inclure les outils Docker
+    image: mynavo/jenkins-docker:latest
+    container_nam
